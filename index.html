@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>캐릭터 영양성분표 생성기</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=East+Sea+Dokdo&display=swap');
+
+:root {
+  --bg-deep: #161B26; /* 덜 어둡고 세련된 모노톤 다크 */
+  --panel-bg: #1F2633;
+  --panel-border: rgba(255, 255, 255, 0.1);
+  --text-primary: #F3F4F6;
+  --text-secondary: #9CA3AF;
+  --accent-blue: #3B82F6;
+  --card-width: 342px;
+  
+  --label-bg: #2B3A4E;
+  --label-text: #FFFFFF;
+  --label-border: #FFFFFF;
+  --label-sub-border: rgba(255, 255, 255, 0.25);
+}
+
+* { box-sizing: border-box; }
+
+body { 
+  margin: 0; 
+  font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif; 
+  background-color: var(--bg-deep); 
+  /* 그리드 패턴이 잘 보이도록 선명도 조정 */
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.12) 0%, transparent 60%),
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 100% 100%, 28px 28px, 28px 28px;
+  color: var(--text-primary); 
+  padding: 60px 20px 40px; 
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap { 
+  max-width: 1000px; 
+  margin: 0 auto; 
+  display: grid; 
+  grid-template-columns: 1fr var(--card-width); 
+  gap: 40px; 
+  align-items: start; 
+}
+
+@media(max-width:850px) { 
+  .wrap { grid-template-columns: 1fr; justify-items: center; } 
+  .label-col { position: static!important; margin-top: 0!important; } 
+}
+
+/* 좌측 편집 패널 */
+.header-group { margin-bottom: 24px; }
+
+/* East sea dokdo 폰트 적용 및 사이즈 조절 */
+h1 { 
+  font-family: 'East Sea Dokdo', cursive; 
+  font-size: 55px; 
+  font-weight: 400; 
+  margin: 0 0 2px; 
+  letter-spacing: 1px; 
+  color: #FFF; 
+  line-height: 1;
+}
+.sub { font-size: 14px; color: var(--text-secondary); margin: 0; font-weight: 400; }
+
+.panel, .legend { 
+  background: var(--panel-bg); 
+  border: 1px solid var(--panel-border); 
+  border-radius: 16px; 
+  padding: 24px; 
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.field { margin-bottom: 20px; }
+
+/* 선택한 성격(selected-title) 스타일과 완전 통일 */
+.field label { 
+  display: block; 
+  font-size: 13px; 
+  font-weight: 700; 
+  color: var(--text-primary); 
+  margin-bottom: 8px; 
+  letter-spacing: normal; 
+  text-transform: none; 
+}
+
+.field input[type="text"] { 
+  width: 100%; 
+  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--panel-border); 
+  border-radius: 8px; 
+  padding: 12px 14px; 
+  font-size: 14px; 
+  color: #FFF;
+  outline: none;
+  transition: all 0.2s ease;
+}
+.field input[type="text"]:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
+
+/* color-field 크기 및 스타일을 input[type="text"] 박스와 같게 조정 */
+.color-field { 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+  margin-bottom: 20px; 
+  background: rgba(0,0,0,0.25); 
+  padding: 10px 14px; 
+  border-radius: 8px; 
+  border: 1px solid var(--panel-border);
+  height: 45px;
+}
+.color-field label { font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 0; }
+.color-field input[type="color"] { border: none; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; background: none; padding: 0; }
+
+.selected-title { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; color: var(--text-primary);  margin-bottom: 8px; }
+
+.counter { font-size: 11px; color: var(--accent-blue); font-weight: 600; background: rgba(59,130,246,0.15); padding: 3px 10px; border-radius: 12px; }
+.selected-bar { display: flex; flex-wrap: wrap; gap: 6px; min-height: 48px; background: rgba(0,0,0,0.2); border: 1.5px dashed var(--panel-border); border-radius: 10px; padding: 8px; margin-bottom: 20px; align-items: center; }
+.hint { font-size: 14px; color: var(--text-secondary); padding-left: 4px; }
+.selected-chip { display: flex; align-items: center; gap: 6px; color: #fff; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 16px; }
+.selected-chip button { border: 0; background: none; color: #fff; cursor: pointer; padding: 0; font-size: 12px; opacity: 0.8; }
+
+.cat { border-top: 1px solid var(--panel-border); padding-top: 16px; margin-top: 16px; }
+.cat-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.cat-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 12px; padding: 6px 12px; border-radius: 18px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.03); color: var(--text-secondary); cursor: pointer; user-select: none; font-weight: 500; transition: all 0.15s ease; }
+.chip:hover { border-color: rgba(255,255,255,0.2); color: #FFF; }
+.chip.active { color: #fff; border-color: transparent; font-weight: 600; }
+
+.legend { margin-top: 20px; font-size: 12px; color: var(--text-secondary); }
+.legend summary { cursor: pointer; font-weight: 700; color: var(--text-primary); }
+.legend ul { margin: 8px 0 0; padding-left: 18px; line-height: 1.6; }
+
+/* 우측 컬럼 panel 시작 상단 위치에 맞춰 margin-top 조정 */
+.label-col { 
+  position: sticky; 
+  top: 40px; 
+  margin-top: 99px; 
+  width: var(--card-width);
+  display: flex;
+  flex-direction: column;
+}
+
+.lang { display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 12px; width: 100%; }
+.lang button { 
+  border: 1px solid var(--panel-border); 
+  background: rgba(255,255,255,0.05); 
+  border-radius: 6px; 
+  flex: 1;
+  height: 32px;
+  font-size: 12px; 
+  font-weight: 600; 
+  color: var(--text-secondary); 
+  cursor: pointer; 
+  transition: all 0.2s;
+}
+.lang button.active { background: #FFF; color: #000; border-color: #FFF; }
+
+.label-export-target { 
+  width: var(--card-width); 
+  height: 450px; 
+  padding: 0; 
+  box-sizing: border-box;
+}
+
+.nutrition-card { 
+  background-color: var(--label-bg); 
+  color: var(--label-text); 
+  padding: 24px 22px; 
+  font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Helvetica Neue", sans-serif; 
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; 
+  box-sizing: border-box;
+}
+
+.card-char-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--label-text);
+  margin-bottom: 2px;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+  opacity: 0.95;
+}
+
+.val-group { display: flex; align-items: center; justify-content: flex-end; gap: 12px; height: 100%; }
+.val-amount { font-weight: 500; }
+.val-pct { font-weight: 800; min-width: 36px; text-align: right; }
+
+.ko-label .n-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: flex-end; 
+  border-bottom: 5px solid var(--label-border); 
+  padding-bottom: 6px; 
+}
+
+/* n-title 40px 변경 및 수직 영역 확장 */
+.ko-label .n-title { 
+  font-size: 40px; 
+  font-weight: 900; 
+  letter-spacing: -1.5px; 
+  line-height: 0.9; 
+  margin: 0; 
+}
+.ko-label .n-top-right { 
+  text-align: right; 
+  font-size: 12px; 
+  line-height: 1.25; 
+  font-weight: 700;
+}
+.ko-label .n-top-right .kcal-val { 
+  font-size: 22px; 
+  font-weight: 900; 
+  line-height: 1; 
+}
+
+.ko-label .n-subhead { 
+  display: flex; 
+  justify-content: space-between; 
+  font-size: 11px; 
+  border-bottom: 2px solid var(--label-border); 
+  padding: 7px 0; 
+  font-weight: 800; 
+  letter-spacing: -0.2px;
+}
+
+.ko-label .n-row { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  border-bottom: 1px solid var(--label-sub-border); 
+  padding: 7px 0; 
+  font-size: 13px; 
+  line-height: 1;
+}
+
+/* n-row sub 동적 opacity: 0.9 연동 */
+.ko-label .n-row.sub { 
+  padding-left: 12px; 
+  opacity: 0.9; 
+}
+
+.ko-label .n-row.thick { border-bottom: 4px solid var(--label-border); }
+.ko-label .n-row.bold, .ko-label .n-row .bold { font-weight: 800; }
+.ko-label .footer-msg { font-size: 9px; opacity: 0.8; line-height: 1.35; text-align: left; border-top: 1px solid var(--label-border); padding-top: 8px; margin-top: 6px; }
+
+/* 영문 레이아웃 */
+.en-label .n-title { font-size: 32px; font-weight: 900; border-bottom: 1px solid var(--label-border); padding-bottom: 4px; margin-bottom: 2px; line-height: 0.9; }
+.en-label .n-servings { font-size: 11px; border-bottom: 8px solid var(--label-border); padding-bottom: 4px; line-height: 1.2; }
+.en-label .n-cal-row { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 4px solid var(--label-border); padding: 4px 0; }
+.en-label .n-cal-label { font-size: 10px; font-weight: bold; }
+.en-label .n-cal-title { font-size: 20px; font-weight: 900; }
+.en-label .n-cal-num { font-size: 28px; font-weight: 900; line-height: 0.85; }
+.en-label .n-dv-header { text-align: right; font-size: 10px; font-weight: bold; border-bottom: 1px solid var(--label-border); padding: 3px 0; }
+.en-label .n-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--label-sub-border); padding: 5px 0; font-size: 12px; line-height: 1; }
+.en-label .n-row.sub { padding-left: 12px; opacity: 0.7; }
+.en-label .n-row.thick { border-bottom: 4px solid var(--label-border); }
+.en-label .n-row.bold, .en-label .n-row .bold { font-weight: 800; }
+.en-label .footer-msg { font-size: 8.5px; opacity: 0.8; line-height: 1.3; text-align: left; border-top: 1px solid var(--label-border); padding-top: 6px; margin-top: 4px; }
+
+.ingredients { 
+  width: 100%; 
+  font-size: 12px; 
+  color: var(--text-secondary); 
+  margin-top: 16px; 
+  line-height: 1.5; 
+  word-break: keep-all;
+}
+.ingredients b { color: var(--text-primary); }
+
+.actions { display: flex; gap: 10px; margin-top: 16px; width: 100%; }
+.actions button { 
+  flex: 1; 
+  padding: 12px; 
+  border-radius: 8px; 
+  border: 1px solid transparent; 
+  background: var(--accent-blue); 
+  color: #fff; 
+  font-weight: 700; 
+  cursor: pointer; 
+  font-size: 13px; 
+  transition: opacity 0.2s;
+}
+.actions button:hover { opacity: 0.9; }
+.actions .secondary { background: rgba(255,255,255,0.08); color: var(--text-primary); border: 1px solid var(--panel-border); }
+
+.copyright-footer { 
+  text-align: center; 
+  font-size: 12px; 
+  color: var(--text-secondary); 
+  margin-top: 60px; 
+  letter-spacing: 0.05em;
+  opacity: 0.6;
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <!-- 편집 영역 -->
+  <div>
+    <div class="header-group">
+      <h1>기다려라... 먹어주마</h1>
+      <p class="sub">좋아하는 캐릭터의 영양성분은?</p>
+    </div>
+    
+    <div class="panel">
+      <div class="field">
+        <label>캐릭터 이름</label>
+        <input id="charName" type="text" placeholder="예) 주경욱" maxlength="30">
+      </div>
+      
+      <div class="color-field">
+        <label for="bgColorPicker">성분표 배경색 지정</label>
+        <input type="color" id="bgColorPicker" value="#2B3A4E">
+      </div>
+
+      <div class="selected-title">
+        <span>선택한 성격</span>
+        <span class="counter" id="counter">0개 선택됨</span>
+      </div>
+      <div class="selected-bar" id="selectedBar">
+        <span class="hint">아래 키워드를 터치하여 성격을 추가해 주세요</span>
+      </div>
+      
+      <div id="catContainer"></div>
+    </div>
+
+    <details class="legend">
+      <summary>영양정보 계산 방식에 대하여</summary>
+      <ul>
+        <li>각 성격은 자극·포근함·달콤함·묵직함·파괴성·고급스러움·단단함 등의 내부 성향값을 가집니다.</li>
+        <li>선택된 성격 조합에 따라 보정값이 적용됩니다.</li>
+      </ul>
+    </details>
+  </div>
+
+  <!-- 이미지 프리뷰 & 다운로드 영역 -->
+  <div class="label-col">
+    <!-- 국문 / English 선택 버튼 -->
+    <div class="lang">
+      <button id="koBtn" class="active">국문</button>
+      <button id="enBtn">English</button>
+    </div>
+
+    <!-- 고정 크기 이미지 캡처 영역 -->
+    <div class="label-export-target" id="exportTarget">
+      <div class="nutrition-card ko-label" id="labelCard">
+        <!-- 스크립트 가공 제어 -->
+      </div>
+    </div>
+
+    <!-- 주요 성분 안내 (너비 일치) -->
+    <div class="ingredients" id="ingredientsLine"><b>주요 성분</b> : 성격을 선택해주세요</div>
+
+    <!-- 하단 액션 버튼 (너비 일치) -->
+    <div class="actions">
+      <button class="secondary" id="resetBtn">초기화</button>
+      <button id="downloadBtn">이미지로 저장하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 저작권 텍스트 -->
+<div class="copyright-footer">
+  © 2026 MANGLI. All rights reserved.
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+const CATEGORIES=[
+{name:'행동',color:'#EF4444',subs:[['모험심이 강한',2],['야심만만한',2],['결단력 있는',1],['열정적인',1],['주도적인',1],['끈기 있는',1],['부지런한',1],['무모한',-1],['충동적인',-1]]},
+{name:'사고',color:'#3B82F6',subs:[['분석적인',1],['지적인',1],['객관적인',1],['관찰력이 뛰어난',1],['통찰력 있는',1],['현명한',1],['비이성적인',-1],['어리석은',-1],['뭐든 아는 체하는',-1]]},
+{name:'정서',color:'#EC4899',subs:[['침착한',1],['느긋한',1],['온화한',1],['낙천적인',1],['격정적인',1],['성마른',-1],['감정과잉인',-1],['신경과민인',-1],['불안정한',-1]]},
+{name:'대인관계',color:'#F59E0B',subs:[['다정한',1],['공감을 잘하는',1],['우호적인',1],['친절한',1],['관대한',1],['잘 보살피는',1],['무관심한',-1],['냉담한',-1],['이기적인',-1]]},
+{name:'자기통제',color:'#10B981',subs:[['절제력이 있는',1],['꼼꼼한',1],['조직적인',1],['효율적인',1],['알뜰한',1],['강박적인',-1],['게으른',-1],['체계적이지 못한',-1],['완벽주의인',-1]]},
+{name:'자기인식',color:'#8B5CF6',subs:[['자신감 있는',1],['독립적인',1],['중심이 잡힌',1],['겸손한',1],['소박한',1],['거만한',-1],['오만한',-1],['허세를 부리는',-1],['의지박약인',-1]]},
+{name:'사회성',color:'#06B6D4',subs:[['외향적인',1],['재미있는',1],['재치 있는',1],['설득력 있는',1],['매력적인',1],['자유분방한',1],['지나치게 말이 많은',-1],['재미없는',-1],['지나치게 말수가 적은',-1]]},
+{name:'가치관',color:'#14B8A6',subs:[['정직한',1],['정의로운',1],['정직하지 못한',-1],['기만적인',-1],['불충한',-1],['위선적인',-1],['비윤리적인',-1],['고마워할 줄 모르는',-1],['관용적인',1]]},
+{name:'갈등',color:'#F43F5E',subs:[['대담한',1],['용기 있는',1],['대립을 일삼는',-1],['적대적인',-1],['잔인한',-1],['폭력적인',-1],['다혈질인',-1],['강압적인',-1],['비판적인',-1]]},
+{name:'욕구',color:'#6366F1',subs:[['관능적인',1],['즉흥적인',1],['순수한',1],['잘 믿는',1],['중독에 빠지는',-1],['집착이 강한',-1],['소유욕이 강한',-1],['탐욕스러운',-1],['물질만능주의인',-1]]}
+];
+
+const POS={
+'모험심이 강한':[3,0,0,1,1,0,2],'야심만만한':[3,-1,0,2,1,2,3],'결단력 있는':[2,0,0,0,0,0,3],'열정적인':[3,1,1,2,1,0,2],'주도적인':[2,-1,0,1,0,1,3],'끈기 있는':[1,1,0,1,0,0,4],'부지런한':[0,2,0,0,-1,0,3],'무모한':[4,-2,0,1,3,-1,1],'충동적인':[3,-1,2,2,3,0,0],
+'분석적인':[0,-1,-1,0,0,1,3],'지적인':[0,0,0,0,0,2,3],'객관적인':[-1,0,-1,-1,0,1,3],'관찰력이 뛰어난':[0,0,0,0,0,1,2],'통찰력 있는':[0,0,0,1,0,2,3],'현명한':[-1,1,0,-1,-1,1,4],'비이성적인':[2,-1,1,1,2,0,-2],'어리석은':[1,-1,1,1,1,-1,-3],'뭐든 아는 체하는':[1,-1,0,2,1,3,-1],
+'침착한':[-2,2,0,-1,-1,0,3],'느긋한':[-2,3,0,-1,-1,0,2],'온화한':[-1,3,2,-1,-1,0,2],'낙천적인':[1,2,2,1,-1,0,2],'격정적인':[4,0,2,2,2,0,2],'성마른':[4,-2,0,1,3,-1,-1],'감정과잉인':[3,-1,3,3,2,0,0],'신경과민인':[2,-1,1,1,2,0,-1],'불안정한':[2,-2,1,2,3,-1,-2],
+'다정한':[-1,3,4,1,-1,0,2],'공감을 잘하는':[-1,3,2,1,-1,0,2],'우호적인':[-1,3,2,0,-1,0,2],'친절한':[-1,3,2,0,-1,0,2],'관대한':[-1,3,1,1,-1,1,2],'잘 보살피는':[-1,4,2,1,-1,0,3],'무관심한':[-1,-3,-2,-1,1,-1,-2],'냉담한':[0,-3,-2,1,1,1,-1],'이기적인':[2,-3,0,2,2,2,1],
+'절제력이 있는':[-2,1,-1,-1,-2,0,3],'꼼꼼한':[-1,0,-1,0,-1,1,3],'조직적인':[-1,0,-1,-1,-1,1,3],'효율적인':[0,-1,-1,-1,-1,1,3],'알뜰한':[-1,1,-1,-1,-1,0,2],'강박적인':[2,-2,0,3,2,1,1],'게으른':[-1,1,0,1,1,-1,-2],'체계적이지 못한':[1,-1,1,1,2,-1,-1],'완벽주의인':[1,-1,-1,3,1,2,2],
+'자신감 있는':[2,0,1,1,0,2,3],'독립적인':[2,-1,0,0,0,1,3],'중심이 잡힌':[-1,2,0,-1,-1,1,4],'겸손한':[-1,2,1,-1,-1,0,2],'소박한':[-1,2,0,-2,-1,-1,2],'거만한':[2,-2,0,3,2,3,1],'오만한':[2,-2,0,3,2,3,1],'허세를 부리는':[2,-2,2,3,1,4,0],'의지박약인':[-1,-1,1,1,1,-1,-3],
+'외향적인':[2,2,2,1,0,0,2],'재미있는':[2,2,3,1,0,0,2],'재치 있는':[1,1,2,1,0,1,2],'설득력 있는':[2,0,1,2,0,2,3],'매력적인':[2,1,3,2,0,3,2],'자유분방한':[3,0,2,2,2,0,1],'지나치게 말이 많은':[2,-1,2,2,1,0,0],'재미없는':[-1,-1,-1,-1,0,-1,0],'지나치게 말수가 적은':[-1,-1,-1,0,0,0,-1],
+'정직한':[-1,1,1,-1,-1,0,3],'정의로운':[0,1,1,-1,-1,1,3],'정직하지 못한':[2,-2,0,2,3,1,-1],'기만적인':[3,-2,0,2,3,2,-1],'불충한':[2,-3,0,2,3,0,-1],'위선적인':[2,-2,1,3,3,2,-1],'비윤리적인':[2,-2,0,2,4,0,-2],'고마워할 줄 모르는':[1,-2,-1,2,2,0,-1],'관용적인':[-1,2,1,0,-1,0,2],
+'대담한':[3,0,1,1,0,1,3],'용기 있는':[2,1,1,0,-1,0,4],'대립을 일삼는':[4,-2,0,2,4,0,0],'적대적인':[4,-3,-1,3,4,-1,-1],'잔인한':[4,-4,-2,4,5,0,0],'폭력적인':[5,-4,-1,4,5,-1,1],'다혈질인':[5,-2,1,3,4,0,0],'강압적인':[4,-3,0,3,4,1,2],'비판적인':[3,-2,-1,2,2,1,1],
+'관능적인':[2,1,4,4,0,3,1],'즉흥적인':[3,1,2,2,2,0,1],'순수한':[-1,3,3,-1,-1,0,2],'잘 믿는':[-1,3,2,0,0,0,0],'중독에 빠지는':[3,-1,4,4,4,0,-1],'집착이 강한':[4,-1,3,4,4,1,1],'소유욕이 강한':[3,-2,1,4,3,2,2],'탐욕스러운':[3,-2,1,5,4,4,1],'물질만능주의인':[2,-2,0,5,3,5,1]
+};
+
+const defaultNeg=[2,-2,0,2,2,0,-1], defaultPos=[0,1,1,0,0,0,1];
+function getvec(name,sign){ return POS[name] || (sign>0 ? defaultPos : defaultNeg); }
+
+let selected=[];
+let lang='ko';
+
+function sortSelected(){
+  selected.sort((a,b)=>{
+    const catIdxA = CATEGORIES.findIndex(c=>c.name===a.cat);
+    const catIdxB = CATEGORIES.findIndex(c=>c.name===b.cat);
+    if(catIdxA !== catIdxB) return catIdxA - catIdxB;
+    const catObj = CATEGORIES[catIdxA];
+    return catObj.subs.findIndex(s=>s[0]===a.sub) - catObj.subs.findIndex(s=>s[0]===b.sub);
+  });
+}
+
+function renderCategories(){
+  const c=document.getElementById('catContainer');
+  c.innerHTML='';
+  CATEGORIES.forEach(cat=>{
+    const wrap=document.createElement('div'); wrap.className='cat';
+    const head=document.createElement('div'); head.className='cat-head';
+    const title=document.createElement('div'); title.className='cat-title';
+    title.innerHTML='<span class="dot" style="background:'+cat.color+'"></span>'+cat.name;
+    head.append(title); wrap.append(head);
+    
+    const chips=document.createElement('div'); chips.className='chips';
+    cat.subs.forEach(item=>{
+      const sub=item[0], sign=item[1];
+      const chip=document.createElement('div');
+      const active=selected.some(s=>s.cat===cat.name && s.sub===sub);
+      chip.className='chip'+(active?' active':'');
+      if(active) chip.style.background=cat.color;
+      chip.textContent=sub;
+      chip.onclick=()=>toggleKeyword(cat,sub,sign);
+      chips.appendChild(chip);
+    });
+    wrap.append(chips); c.append(wrap);
+  });
+}
+
+function toggleKeyword(cat,sub,sign){
+  const idx=selected.findIndex(s=>s.cat===cat.name && s.sub===sub);
+  if(idx>=0){ selected.splice(idx,1); }
+  else{ selected.push({cat:cat.name,sub:sub,sign:sign,color:cat.color}); }
+  sortSelected(); renderCategories(); renderSelectedBar(); compute();
+}
+
+function renderSelectedBar(){
+  const bar=document.getElementById('selectedBar');
+  bar.innerHTML='';
+  document.getElementById('counter').textContent=selected.length+'개 선택됨';
+  if(!selected.length){
+    bar.innerHTML='<span class="hint">아래 키워드를 터치하여 성격을 추가해 주세요</span>';
+    return;
+  }
+  selected.forEach(s=>{
+    const chip=document.createElement('div'); chip.className='selected-chip'; chip.style.background=s.color;
+    chip.innerHTML=s.sub+'<button type="button">✕</button>';
+    chip.querySelector('button').onclick=()=>removeSelected(s);
+    bar.appendChild(chip);
+  });
+}
+
+function removeSelected(s){
+  selected=selected.filter(x=>!(x.cat===s.cat && x.sub===s.sub));
+  sortSelected(); renderCategories(); renderSelectedBar(); compute();
+}
+
+function compute(){
+  const name=document.getElementById('charName').value.trim() || '캐릭터 이름';
+
+  let sodium=0, carbs=0, sugar=0, fat=0, trans=0, chol=0, protein=0, kcal=0;
+
+  if(selected.length > 0) {
+    const vals=selected.map(s=>getvec(s.sub,s.sign));
+    
+    // 1. 단순 산술 평균 계산
+    let avg=Array.from({length:7},(_,i)=>vals.reduce((sum,v)=>sum+v[i],0)/vals.length);
+
+    // 2. [개선] 입체성(상충되는 극단적 성격) 보정 계산
+    // 대립하는 키워드가 함께 들어올 경우 상쇄되어 평범해지는 것을 방지하기 위해 분산/변동 폭 계산
+    let variance=Array.from({length:7},(_,i)=>{
+      return vals.reduce((sum,v)=>sum+Math.abs(v[i]-avg[i]),0)/vals.length;
+    });
+
+    // 3. [개선] 음수 처리 및 영양소 매핑 보정
+    // - 나트륨(자극): 매운맛/도발/분산값을 반영 (음수 시 최소 기본 자극 유지)
+    // - 탄수화물(에너지): 정서적 활동성
+    // - 당류(달콤함/겉모습): 음수인 경우 '쿨함/차가움'으로 해석하여 당류는 낮추되 단백질로 전환
+    // - 지방/콜레스테롤(묵직함/욕망): 극단적인 변동성(입체성)이 높을수록 위험한 매력으로 가산
+    // - 단백질(절개/강함): 절제와 냉정함(음수값)이 클수록 오르도록 보정
+
+    let rawSodium = (avg[0] + 2) * 120 + (variance[0] * 80);
+    let rawCarbs = (avg[1] + 2.5) * 7;
+    let rawSugar = (avg[2] + 1.5) * 5;
+    let rawFat = (avg[3] + 1.5) * 4 + (variance[3] * 2);
+    
+    // 부정적 키워드 일괄 트랜스지방 몰아주기 제거 -> 변동성이 큰 '입체적 혼돈' 캐릭터일 때 트랜스지방 상승
+    let rawTrans = Math.max(0, avg[4] * 0.2 + variance[4] * 0.4);
+    
+    let rawChol = (avg[5] + 1.5) * 25 + (variance[5] * 15);
+    
+    // 음수(차가움/결여) 수치가 크면 단백질(심지/단단함)로 흡수
+    let coldBonus = avg[2] < 0 ? Math.abs(avg[2]) * 2 : 0;
+    let rawProtein = (avg[6] + 2) * 5 + coldBonus;
+
+    // 최종 음수 방어 및 반올림 (음수를 눌러서 버리지 않고 보정 공식으로 자연스럽게 정돈)
+    sodium = Math.round(Math.max(10, rawSodium));
+    carbs = Math.round(Math.max(1, rawCarbs));
+    sugar = Math.round(Math.max(0, rawSugar));
+    fat = Math.round(Math.max(0, rawFat));
+    trans = Math.round(Math.max(0, rawTrans) * 10) / 10;
+    chol = Math.round(Math.max(0, rawChol));
+    protein = Math.round(Math.max(1, rawProtein));
+
+    kcal = Math.round(carbs * 4 + protein * 4 + fat * 9);
+  }
+
+  const pct=(val,ref)=>Math.min(999,Math.round(val/ref*100));
+  const card=document.getElementById('labelCard');
+
+  if(lang==='ko'){
+    card.className='nutrition-card ko-label';
+    card.innerHTML=`
+      <div>
+        <div class="card-char-name">${name}</div>
+        <div class="n-header">
+          <div class="n-title">영양정보</div>
+          <div class="n-top-right">
+            총 내용량 100g<br>
+            <span class="kcal-val">${kcal}</span> kcal
+          </div>
+        </div>
+        <div class="n-subhead">
+          <span>총 내용량당</span>
+          <span>1일 영양성분 기준치에 대한 비율</span>
+        </div>
+        <div class="n-row bold">
+          <span>나트륨</span> 
+          <div class="val-group"><span class="val-amount">${sodium}mg</span><span class="val-pct">${pct(sodium,2000)}%</span></div>
+        </div>
+        <div class="n-row bold">
+          <span>탄수화물</span> 
+          <div class="val-group"><span class="val-amount">${carbs}g</span><span class="val-pct">${pct(carbs,324)}%</span></div>
+        </div>
+        <div class="n-row sub">
+          <span>당류</span> 
+          <div class="val-group"><span class="val-amount">${sugar}g</span><span class="val-pct">${pct(sugar,100)}%</span></div>
+        </div>
+        <div class="n-row bold">
+          <span>지방</span> 
+          <div class="val-group"><span class="val-amount">${fat}g</span><span class="val-pct">${pct(fat,54)}%</span></div>
+        </div>
+        <div class="n-row sub">
+          <span>트랜스지방</span> 
+          <div class="val-group"><span class="val-amount">${trans}g</span><span class="val-pct"></span></div>
+        </div>
+        <div class="n-row bold thick">
+          <span>콜레스테롤</span> 
+          <div class="val-group"><span class="val-amount">${chol}mg</span><span class="val-pct">${pct(chol,300)}%</span></div>
+        </div>
+        <div class="n-row bold thick">
+          <span>단백질</span> 
+          <div class="val-group"><span class="val-amount">${protein}g</span><span class="val-pct">${pct(protein,55)}%</span></div>
+        </div>
+      </div>
+      <div class="footer-msg">1일 영양성분 기준치에 대한 비율(%)은 2,000kcal 기준이므로 개인의 필요 열량에<br>따라 다를 수 있습니다.</div>
+    `;
+  } else {
+    card.className='nutrition-card en-label';
+    card.innerHTML=`
+      <div>
+        <div class="card-char-name">${name}</div>
+        <div class="n-title">Nutrition Facts</div>
+        <div class="n-servings">1 serving per container<br><b>Serving size</b> <span style="float:right;"><b>100g</b></span></div>
+        <div class="n-cal-row">
+          <div>
+            <div class="n-cal-label">Amount per serving</div>
+            <div class="n-cal-title">Calories</div>
+          </div>
+          <div class="n-cal-num">${kcal}</div>
+        </div>
+        <div class="n-dv-header">% Daily Value*</div>
+        <div class="n-row bold">
+          <span>Total Fat</span> 
+          <div class="val-group"><span class="val-amount">${fat}g</span><span class="val-pct">${pct(fat,55)}%</span></div>
+        </div>
+        <div class="n-row sub">
+          <span>Trans Fat</span> 
+          <div class="val-group"><span class="val-amount">${trans}g</span><span class="val-pct"></span></div>
+        </div>
+        <div class="n-row bold">
+          <span>Cholesterol</span> 
+          <div class="val-group"><span class="val-amount">${chol}mg</span><span class="val-pct">${pct(chol,300)}%</span></div>
+        </div>
+        <div class="n-row bold">
+          <span>Sodium</span> 
+          <div class="val-group"><span class="val-amount">${sodium}mg</span><span class="val-pct">${pct(sodium,2300)}%</span></div>
+        </div>
+        <div class="n-row bold">
+          <span>Total Carbohydrate</span> 
+          <div class="val-group"><span class="val-amount">${carbs}g</span><span class="val-pct">${pct(carbs,275)}%</span></div>
+        </div>
+        <div class="n-row sub">
+          <span>Total Sugars</span> 
+          <div class="val-group"><span class="val-amount">${sugar}g</span><span class="val-pct"></span></div>
+        </div>
+        <div class="n-row bold thick">
+          <span>Protein</span> 
+          <div class="val-group"><span class="val-amount">${protein}g</span><span class="val-pct">${pct(protein,50)}%</span></div>
+        </div>
+      </div>
+      <div class="footer-msg">* The % Daily Value (DV) tells you how much a nutrient in a serving of food contributes to a daily diet. 2,000 calories a day is used for general nutrition advice.</div>
+    `;
+  }
+
+  document.getElementById('ingredientsLine').innerHTML='<b>'+(lang==='ko'?'주요 성분':'Key traits')+'</b> : '+(selected.length?selected.map(s=>s.sub).join(', '):(lang==='ko'?'성격을 선택해주세요':'Select traits'));
+}
+
+function updateLabelColors(hex) {
+  document.documentElement.style.setProperty('--label-bg', hex);
+  
+  const r = parseInt(hex.substr(1,2),16);
+  const g = parseInt(hex.substr(3,2),16);
+  const b = parseInt(hex.substr(5,2),16);
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  
+  if (brightness > 128) {
+    document.documentElement.style.setProperty('--label-text', '#000000');
+    document.documentElement.style.setProperty('--label-border', '#000000');
+    document.documentElement.style.setProperty('--label-sub-border', 'rgba(0, 0, 0, 0.15)');
+  } else {
+    document.documentElement.style.setProperty('--label-text', '#ffffff');
+    document.documentElement.style.setProperty('--label-border', '#ffffff');
+    document.documentElement.style.setProperty('--label-sub-border', 'rgba(255, 255, 255, 0.25)');
+  }
+}
+
+document.getElementById('bgColorPicker').addEventListener('input', (e)=>{
+  updateLabelColors(e.target.value);
+});
+
+function setLang(next){
+  lang=next;
+  document.getElementById('koBtn').classList.toggle('active',lang==='ko');
+  document.getElementById('enBtn').classList.toggle('active',lang==='en');
+  compute();
+}
+
+document.getElementById('koBtn').onclick=()=>setLang('ko');
+document.getElementById('enBtn').onclick=()=>setLang('en');
+document.getElementById('charName').addEventListener('input',compute);
+
+document.getElementById('resetBtn').onclick=()=>{
+  selected=[];
+  document.getElementById('charName').value='';
+  
+  const defaultBg = '#2B3A4E';
+  document.getElementById('bgColorPicker').value = defaultBg;
+  updateLabelColors(defaultBg);
+
+  renderCategories();
+  renderSelectedBar();
+  compute();
+};
+
+document.getElementById('downloadBtn').onclick=()=>{
+  const btn=document.getElementById('downloadBtn'); 
+  btn.disabled=true; 
+  btn.textContent=lang==='ko'?'저장 중...':'Saving...';
+  
+  html2canvas(document.getElementById('exportTarget'),{
+    scale: 3,
+    useCORS: true,
+    backgroundColor: null
+  }).then(canvas=>{
+    const a=document.createElement('a');
+    const name=document.getElementById('charName').value.trim()||'character';
+    a.download=name+'_nutrition.png'; 
+    a.href=canvas.toDataURL('image/png'); 
+    a.click();
+    btn.disabled=false; 
+    btn.textContent=lang==='ko'?'이미지로 저장하기':'Save Image';
+  }).catch(()=>{
+    btn.disabled=false;
+    btn.textContent=lang==='ko'?'이미지로 저장하기':'Save Image';
+    alert(lang==='ko'?'이미지 저장에 실패했습니다.':'Save failed.');
+  });
+};
+
+renderCategories(); 
+renderSelectedBar(); 
+compute();
+</script>
+</body>
+</html>
