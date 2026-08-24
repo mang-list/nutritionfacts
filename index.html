@@ -301,6 +301,15 @@ h1 {
   letter-spacing: 0.05em;
   opacity: 0.6;
 }
+  /* 서브 항목(당류, 트랜스지방 등) 색상 및 두께 강제 보정 */
+.ko-label .n-row.sub,
+.en-label .n-row.sub,
+.ko-label .n-row.sub *,
+.en-label .n-row.sub * {
+  color: var(--label-text) !important; /* 배경색에 맞춰 지정된 메인 글자색 강제 적용 */
+  opacity: 1 !important;               /* 투명도 해제 */
+  font-weight: 400 !important;          /* 얇은 기본 두께 유지 */
+}
 </style>
 </head>
 <body>
